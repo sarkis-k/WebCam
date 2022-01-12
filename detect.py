@@ -1,8 +1,14 @@
 import cv2
 import time
+from datetime import datetime
+import pandas as pd
 
 #var to hold the first frame
 first_frame=None
+status_list=[None, None]					#chronological list of all frames with indication of movement
+times=[]									#record of date/time when movement apeard
+df=pd.DataFrame(columns=["Start","End"])	#pandas dataframe to organize date/time records
+
 
 #var for turning camera on
 video=cv2.VideoCapture(0)
@@ -13,7 +19,7 @@ while True:
 	#read every frame: method returns two variables first boolean if frame exists second the actual frame
 	check, frame = video.read()
 
-	status=0 	
+	status=0 		#var for the frame where motion was detected
 	
 	#change the color of the frame to gray cheme
 	gray=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -40,6 +46,17 @@ while True:
 		status=1
 		(x,y,w,h)=cv2.boundingRect(contoure)
 		cv2.rectangle(frame, (x,y), (x+w,y+h), (0,255,0), 3)
+	
+	status_list.append(status)
+
+	#records the time and date of apeared motion in the frame
+	#checks last two items in the status_list if they differ(indicating something changed) records the time
+	if status_list[-1]==1 and status_list[-2]==0:
+		times.append(datetime.now())
+	if status_list[-1]==0 and status_list[-2]==1:
+		times.append(datetime.now())
+
+
 
 	#displaying all frames 
 	cv2.imshow("gray", gray)
@@ -52,7 +69,24 @@ while True:
 
 	#key to eqit the program
 	if key==ord('q'):
+		#if quitied while object in the frame record exit time
+		if status==1:
+			times.append(datetime.now())
 		break
+
+
+
+print(status_list)
+print(times)
+
+#creating pandas dataframe for date/time list
+#loop iteration step = 2 for start/end tuple
+for i in range(0, len(times), 2):
+	df=df.append({"Start":times[i], "End":times[i+1]}, ignore_index=True)
+
+#converting pandas datafrmae to .csv file
+df.to_csv("Times.csv")
+
 #destroy all frames
 video.release()
 cv2.destroyAllWindows()
